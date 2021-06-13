@@ -64,7 +64,7 @@ if __name__ == '__main__':
     '''
 
     # These codes work.
-    st_env.sql(f'''
+    st_env.execute_sql(f'''
         CREATE TABLE json_input (
             `id` INT,
             `name` STRING,
@@ -78,6 +78,6 @@ if __name__ == '__main__':
             'json.fail-on-missing-field' = 'false',
             'json.ignore-parse-errors' = 'true',
             'json.timestamp-format.standard' = 'SQL'
-        );'''
+        )'''
     )
     st_env.from_path('json_input').execute().print()
