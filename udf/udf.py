@@ -24,9 +24,11 @@ if __name__ == '__main__':
         .build()
     bt_env = BatchTableEnvironment.create(environment_settings=b_set)
     b_env = ExecutionEnvironment.get_execution_environment()
+    bt_env.register_function('INET_ATON', inet_aton)
+    bt_env.register_function('BIT_OR_AGGR', inet_aton)
     bt_env\
         .from_elements([('0.0.0.1',1),('0.0.0.1',2)], ['ip','flag'])\
-        .group_by(inet_aton(E.col('ip')).alias('ip_int'))\
+        .group_by(E.call_sql('INET_ATON(ip) AS ip_int'))\
         .aggregate(bit_or_aggr(E.col('flag')).alias('flag_agg'))\
         .execute()\
         .print()
