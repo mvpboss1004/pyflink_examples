@@ -44,14 +44,15 @@ The exception message:
 >  File "/usr/share/flink-1.13.0/opt/python/pyflink.zip/pyflink/table/udf.py", line 387, in _java_user_defined_function
 >  File "/usr/share/flink-1.13.0/opt/python/pyflink.zip/pyflink/table/udf.py", line 542, in _create_delegate_function
 >AssertionError
-When I look into the source code of [line 542, in _create_delegate_function](https://github.com/apache/flink/blob/release-1.13.0/flink-python/pyflink/table/udf.py), I found:
+
+When I look into the source code [line 542, in _create_delegate_function](https://github.com/apache/flink/blob/release-1.13.0/flink-python/pyflink/table/udf.py), I found:
 ```
     def _create_delegate_function(self) -> UserDefinedFunction:
         assert self._func_type == 'pandas'
         return DelegatingPandasAggregateFunction(self._func)
 ```
-If the default `func_type` is `general`, what is the meaning of this assertion?
-But for simplicity, you can `func_type` and install pandas in your virtual environment.
+So, if the default `func_type` is `general`, what is the meaning of this assertion?  
+But for simplicity, you can define `func_type='pandas'` and install pandas in your virtual environment.
 
 ## How To Use
  - Create a virtual environment: `virtualenv flink_venv`
