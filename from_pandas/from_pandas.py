@@ -16,7 +16,7 @@ from pytz import timezone
 def safe_type(data_type):
     if isinstance(data_type, pa.Schema):
         for i in range(len(data_type)):
-            data_type.set(i, safe_type(schema[i]))
+            data_type.set(i, safe_type(data_type[i]))
             return data_type
     elif isinstance(data_type, pa.Field):
         return data_type.with_type(safe_type(data_type.type))
@@ -117,8 +117,8 @@ if __name__ == '__main__':
     df = pd.DataFrame({
         '_int': [1, 2],
         '_timestamp': [datetime.now(), pd.Timestamp.now().tz_localize('UTC')],
-        '_array': [[1, None]],
-        '_row': [{'_id':'hello'}, {'_id':'world'}]
+        '_array': [[1,None], [np.nan,2]],
+        '_row': [{'_id':'hello'}, {'_id':'world'}],
     })
     print(df)
 
