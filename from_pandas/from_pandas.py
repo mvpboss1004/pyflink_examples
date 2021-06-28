@@ -1,6 +1,6 @@
 import os
+import tempfile
 from datetime import datetime
-from tempfile import NamedTemporaryFile
 
 import numpy as np
 import pandas as pd
@@ -81,7 +81,7 @@ def from_pandas(t_env, pdf, splits_num=1):
     result_type = RowType([RowField(field.name, from_arrow_type(field.type, field.nullable)) for field in arrow_schema])
 
     # serializes to a file, and we read the file in java
-    temp_file = NamedTemporaryFile(delete=False, dir=tempfile.mkdtemp())
+    temp_file = tempfile.NamedTemporaryFile(delete=False, dir=tempfile.mkdtemp())
     serializer = MySerializer(
         create_arrow_schema(result_type.field_names(), result_type.field_types()),
         result_type,
