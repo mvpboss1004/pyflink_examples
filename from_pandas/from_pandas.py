@@ -6,10 +6,12 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 from pyarrow import types as T
-from pyflink.table import BatchTableEnvironment, EnvironmentSettings
+from pyflink.java_gateway import get_gateway
+from pyflink.table import BatchTableEnvironment, EnvironmentSettings, Table
 from pyflink.table.serializers import ArrowSerializer
-from pyflink.table.types import RowField, RowType, create_arrow_schema, from_arrow_type
+from pyflink.table.types import RowField, RowType, create_arrow_schema, from_arrow_type, _to_java_type
 from pyflink.table.utils import tz_convert_to_internal
+from pyflink.util.java_utils import load_java_class
 from pytz import timezone
 
 
@@ -58,14 +60,13 @@ def pandas_to_arrow(schema, timezone, field_types, series):
                 tz_convert_to_internal(s, field_type, timezone), schema_type))
     return pa.RecordBatch.from_arrays(arrays, schema)
 
-def UnsafeSerializer(ArrowSerializer):
+class UnsafeSerializer(ArrowSerializer):
     def serialize(self, iterable, stream):
         writer = None
         try:
             for cols in iterable:
                 batch = pandas_to_arrow(self._schema, self._timezone, self._field_types, cols)
                 if writer is None:
-                    import pyarrow as pa
                     writer = pa.RecordBatchStreamWriter(stream, batch.schema)
                 writer.write_batch(batch)
         finally:
