@@ -18,8 +18,8 @@ from pytz import timezone
 def safe_type(data_type):
     if isinstance(data_type, pa.Schema):
         for i in range(len(data_type)):
-            data_type.set(i, safe_type(data_type[i]))
-            return data_type
+            data_type = data_type.set(i, safe_type(data_type[i]))
+        return data_type
     elif isinstance(data_type, pa.Field):
         return data_type.with_type(safe_type(data_type.type))
     elif T.is_decimal(data_type):
@@ -79,6 +79,7 @@ def from_pandas(t_env, pdf, splits_num=1):
     if not isinstance(pdf, pd.DataFrame):
         raise TypeError(f'Unsupported type, expected pandas.DataFrame, got {type(pdf)}')
     arrow_schema = safe_type(pa.Schema.from_pandas(pdf, preserve_index=False))
+    print(arrow_schema)
     result_type = RowType([RowField(field.name, from_arrow_type(field.type, field.nullable)) for field in arrow_schema])
 
     # serializes to a file, and we read the file in java
@@ -129,4 +130,3 @@ if __name__ == '__main__':
     # Works!
     from_pandas(bt_env, df).execute().print()    
 
-    
