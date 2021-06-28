@@ -82,7 +82,7 @@ def from_pandas(t_env, pdf, splits_num=1):
 
     # serializes to a file, and we read the file in java
     temp_file = tempfile.NamedTemporaryFile(delete=False, dir=tempfile.mkdtemp())
-    serializer = MySerializer(
+    serializer = UnsafeSerializer(
         create_arrow_schema(result_type.field_names(), result_type.field_types()),
         result_type,
         timezone(t_env.get_config().get_local_timezone()))
