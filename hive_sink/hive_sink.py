@@ -1,7 +1,7 @@
 import sys
-from datetime import date
+from datetime import datetime, time, tzinfo
 from pyflink.table import EnvironmentSettings, BatchTableEnvironment, SqlDialect
-from pyflink.table import expressions as E, DataTypes as T
+from pyflink.table import expressions as E, types as T
 from pyflink.table.catalog import HiveCatalog
 from pyflink.dataset import ExecutionEnvironment
 
@@ -20,23 +20,27 @@ if __name__ == '__main__':
     bt_conf.set_sql_dialect(SqlDialect.HIVE)
     sql = f'''
         CREATE TABLE IF NOT EXISTS {sys.argv[3]} (
-            _id INT,
-            message STRING
+            _multiset ARRAY<INT>,
+            _time TIMESTAMP,
+            _timestamp_tz TIMESTAMP WITH TIME ZONE,
+            _timestamp_ltz TIMESTAMP WITH LOCAL TIME ZONE,
         )
-        PARTITIONED BY (partition_date DATE)
         STORED AS ORC
     '''
     bt_env.execute_sql(sql)
     bt_env\
         .from_elements(
             elements = [
-                (1, 'hello\nworld', date.today()),
-                (2, 'are\nyou\nok', date.today())
+                set(1,2),
+                time(12,0,0),
+                datetime(2000,1,1, tzinfo=tzinfo('Asia/Shanghai')),
+                datetime().now(),
             ],
             schema = T.ROW([
-                T.FIELD('_id', T.INT()),
-                T.FIELD('message', T.STRING()),
-                T.FIELD('partition_date', T.DATE())
+                T.FIELD('_multiset', T.MultiSetType(T.IntType())),
+                T.FIELD('_time', T.TimeType(0)),
+                T.FIELD('_timestamp_tz', T.ZonedTimestampType(3)),
+                T.FIELD('_timestamp_ltz', T.LocalZonedTimestampType(3))
             ])
         )\
         .execute_insert(sys.argv[3], overwrite=True)
