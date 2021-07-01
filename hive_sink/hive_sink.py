@@ -22,8 +22,7 @@ if __name__ == '__main__':
         CREATE TABLE IF NOT EXISTS {sys.argv[3]} (
             multiset_ ARRAY<INT>,
             time_ TIMESTAMP,
-            timestamp_tz_ TIMESTAMP WITH TIME ZONE,
-            timestamp_ltz_ TIMESTAMP WITH LOCAL TIME ZONE,
+            timestamp_tz_ TIMESTAMP,
             struct_ STRUCT<
                 id_: STRING
             >
@@ -42,8 +41,7 @@ if __name__ == '__main__':
             schema = T.RowType([
                 T.RowField('multiset_', T.MultiSetType(T.IntType())),
                 T.RowField('time_', T.TimeType(0)),
-                T.RowField('timestamp_tz_', T.ZonedTimestampType(3)),
-                T.RowField('timestamp_ltz_', T.LocalZonedTimestampType(3)),
+                T.RowField('timestamp_tz_', T.ZonedTimestampType(3)),\
                 T.RowField('struct_', T.RowType([T.RowField('id_',T.StringType())])),
             ])
         )\
