@@ -20,10 +20,13 @@ if __name__ == '__main__':
     bt_conf.set_sql_dialect(SqlDialect.HIVE)
     sql = f'''
         CREATE TABLE IF NOT EXISTS {sys.argv[3]} (
-            _multiset ARRAY<INT>,
-            _time TIMESTAMP,
-            _timestamp_tz TIMESTAMP WITH TIME ZONE,
-            _timestamp_ltz TIMESTAMP WITH LOCAL TIME ZONE,
+            multiset_ ARRAY<INT>,
+            time_ TIMESTAMP,
+            timestamp_tz_ TIMESTAMP WITH TIME ZONE,
+            timestamp_ltz_ TIMESTAMP WITH LOCAL TIME ZONE,
+            struct_ STRUCT<
+                id_: STRING
+            >
         )
         STORED AS ORC
     '''
@@ -36,11 +39,12 @@ if __name__ == '__main__':
                 datetime(2000,1,1, tzinfo=tzinfo('Asia/Shanghai')),
                 datetime().now(),
             ],
-            schema = T.ROW([
-                T.FIELD('_multiset', T.MultiSetType(T.IntType())),
-                T.FIELD('_time', T.TimeType(0)),
-                T.FIELD('_timestamp_tz', T.ZonedTimestampType(3)),
-                T.FIELD('_timestamp_ltz', T.LocalZonedTimestampType(3))
+            schema = T.RowType([
+                T.RowField('multiset_', T.MultiSetType(T.IntType())),
+                T.RowField('time_', T.TimeType(0)),
+                T.RowField('timestamp_tz_', T.ZonedTimestampType(3)),
+                T.RowField('timestamp_ltz_', T.LocalZonedTimestampType(3)),
+                T.RowField('struct_', T.RowType([T.RowField('id_',T.StringType())])),
             ])
         )\
         .execute_insert(sys.argv[3], overwrite=True)
