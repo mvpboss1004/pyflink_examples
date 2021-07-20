@@ -24,10 +24,10 @@ def to_hive_type(data_type):
     else:
         raise TypeError(f'Unsupported data type {type(data_type)} in hive')
     
-def to_hive_schema(schema, partition_fields):
+def to_hive_schema(schema, partition_fields=[]):
     partition_fields = set(partition_fields)
-    fields = []
-    partitions = []
+    fields = [] # ordinary fields
+    partitions = [] # partition fields
     for i in range(schema.get_field_count()):
         name = schema.get_field_name(i)
         line = f'`{name}` {to_hive_type(schema.get_field_data_type(i))}'
@@ -49,28 +49,39 @@ if __name__ == '__main__':
     
     bt_env.register_catalog('hive', HiveCatalog('hive', default_database=sys.argv[1], hive_conf_dir=sys.argv[2]))
     bt_env.use_catalog('hive')
+    table = bt_env.from_elements(
+        elements = [(
+            'Alice',
+            1,
+            ['hello', 'world'],
+            {'lat':30.0, 'lon':119.0},
+            datetime.now(),
+            date.today(),
+        )],
+        schema = FT.RowType([
+            FT.RowField('name', FT.VarCharType(0x7fffffff)),
+            FT.RowField('age', FT.IntType()),
+            FT.RowField('tags', FT.ArrayType(FT.VarCharType(0x7fffffff))),
+            FT.RowField('geo', FT.RowType([
+                FT.RowField('lat', FT.DoubleType()),
+                FT.RowField('lon', FT.DoubleType()),
+            ])),
+            FT.RowField('update_time', FT.TimestampType(3)),
+            FT.RowField('partition_date', FT.DateType()),
+        ])
+    )
+
+    fields, partitions = to_hive_schema(table.get_schema(), ['partition_date'])
     bt_conf.set_sql_dialect(SqlDialect.HIVE)
-    bt_env\
-        .from_elements(
-            elements = [
-                'Alice',
-                1,
-                ['hello', 'world'],
-                {'lat':30.0, 'lon':119.0},
-                datetime.now(),
-                date.today(),
-            ],
-            schema = FT.RowType([
-                FT.RowField('name', FT.VarCharType(16)),
-                FT.RowField('age', FT.IntType()),
-                FT.RowField('tags', FT.ArrayType(FT.VarCharType(8))),
-                FT.RowField('geo', FT.RowType([
-                    FT.RowField('lat', FT.DoubleType()),
-                    FT.RowField('lon', FT.DoubleType()),
-                ])),
-                FT.RowField('update_time', FT.TimestampType(3)),
-                FT.RowField('partition_date', FT.DateType()),
-            ])
-        )\
-        .execute_insert(sys.argv[3], overwrite=True)
+    sql = f'''
+        CREATE TABLE IF NOT EXISTS {sys.argv[3]} (
+            {fields}
+        )
+        PARTITIONED BY ({partitions})
+        STORED AS ORC
+    '''
+    print(sql)
+    bt_env.execute_sql(sql)
+    table.insert_into(sys.argv[3])
+    bt_env.execute('hive_sink')
 
