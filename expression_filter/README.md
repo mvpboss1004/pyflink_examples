@@ -1,0 +1,2 @@
+# Expression Filter
+There are bugs in parsing expression. The same condition that works in a complete 'SELECT ... WHERE ...' SQL statement sometimes won't work in Table.filter API. So the suggestion is: always regist Table as temporary table and run sql against it.
