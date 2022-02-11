@@ -1,0 +1,110 @@
+#!/bin/bash
+################################################################################
+#  Licensed to the Apache Software Foundation (ASF) under one
+#  or more contributor license agreements.  See the NOTICE file
+#  distributed with this work for additional information
+#  regarding copyright ownership.  The ASF licenses this file
+#  to you under the Apache License, Version 2.0 (the
+#  "License"); you may not use this file except in compliance
+#  with the License.  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+# limitations under the License.
+################################################################################
+
+sbin="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+. "$sbin"/flink-env.sh
+bin=`dirname "$sbin"`/bin
+. "$bin"/config.sh
+
+FLINK_CLASSPATH=`constructFlinkClassPath`
+PYTHON_JAR_PATH=`echo "$FLINK_OPT_DIR"/flink-python*.jar`
+
+PYFLINK_PYTHON=ipython3
+
+# So that python can find out Flink's Jars
+export FLINK_BIN_DIR=$FLINK_BIN_DIR
+export FLINK_HOME
+
+# Add pyflink & py4j & cloudpickle to PYTHONPATH
+export PYTHONPATH="$FLINK_OPT_DIR/python/pyflink.zip:$PYTHONPATH"
+PY4J_ZIP=`echo "$FLINK_OPT_DIR"/python/py4j-*-src.zip`
+CLOUDPICKLE_ZIP=`echo "$FLINK_OPT_DIR"/python/cloudpickle-*-src.zip`
+export PYTHONPATH="$PY4J_ZIP:$CLOUDPICKLE_ZIP:$PYTHONPATH"
+
+PARSER="org.apache.flink.client.python.PythonShellParser"
+function parse_options() {
+    "${JAVA_RUN}" ${JVM_ARGS} -cp ${FLINK_CLASSPATH}:${PYTHON_JAR_PATH} ${PARSER} "$@"
+    printf "%d\0" $?
+}
+
+# Turn off posix mode since it does not allow process substitution
+set +o posix
+# If the command has option --help | -h, the script will directly
+# run the PythonShellParser program to stdout the help message.
+if [[ "$@" =~ '--help' ]] || [[ "$@" =~ '-h' ]]; then
+    "${JAVA_RUN}" ${JVM_ARGS} -cp ${FLINK_CLASSPATH}:${PYTHON_JAR_PATH} ${PARSER} "$@"
+    exit 0
+fi
+OPTIONS=()
+while IFS= read -d '' -r ARG; do
+  OPTIONS+=("$ARG")
+done < <(parse_options "$@")
+
+COUNT=${#OPTIONS[@]}
+LAST=$((COUNT - 1))
+LAUNCHER_EXIT_CODE=${OPTIONS[$LAST]}
+
+# Certain JVM failures result in errors being printed to stdout (instead of stderr), which causes
+# the code that parses the output of the launcher to get confused. In those cases, check if the
+# exit code is an integer, and if it's not, handle it as a special error case.
+if ! [[ ${LAUNCHER_EXIT_CODE} =~ ^[0-9]+$ ]]; then
+  echo "${OPTIONS[@]}" | head -n-1 1>&2
+  exit 1
+fi
+
+if [[ ${LAUNCHER_EXIT_CODE} != 0 ]]; then
+  exit ${LAUNCHER_EXIT_CODE}
+fi
+
+OPTIONS=("${OPTIONS[@]:0:$LAST}")
+
+export SUBMIT_ARGS=${OPTIONS[@]}
+
+trap 'rm -f "$TMPFILE"' EXIT
+TMPFILE=$(mktemp) || exit 1
+IMPORTS='
+from pyflink.common import *
+from pyflink.datastream import *
+from pyflink.table import expressions as E, descriptors as D, DataTypes as T, window as W,\
+ EnvironmentSettings, TableEnvironment, StreamTableEnvironment
+from pyflink.table.udf import udf, udaf, udtf, udtaf
+'
+
+cat << EOF > $TMPFILE
+import os
+${IMPORTS}
+
+imports = '''${IMPORTS}'''
+print('\nThe following modules are imported:', imports)
+
+e_env = StreamExecutionEnvironment.get_execution_environment()
+print("ExecutionEnvironment - Use 'e_env' variable")
+
+b_set = EnvironmentSettings.new_instance().in_batch_mode().build()
+bt_env = StreamTableEnvironment.create(e_env, environment_settings=b_set)
+print("Batch - Use 'b_set' and 'bt_env' variables")
+
+s_set = EnvironmentSettings.new_instance().in_streaming_mode().build()
+st_env = StreamTableEnvironment.create(e_env, environment_settings=s_set)
+print("Streaming - Use 's_set' and 'st_env' variables")
+EOF
+
+# -i: interactive
+${PYFLINK_PYTHON} -i $TMPFILE
+
