@@ -1,16 +1,9 @@
 import sys
-import json
-from pyflink.table.descriptors import *
-from pyflink.table import EnvironmentSettings, StreamTableEnvironment, DataTypes as T
-from pyflink.datastream import StreamExecutionEnvironment
+from pyflink.table import EnvironmentSettings, TableEnvironment
+
 if __name__ == '__main__':
-    s_set = EnvironmentSettings\
-        .new_instance()\
-        .in_streaming_mode()\
-        .use_blink_planner()\
-        .build()
-    st_env = StreamTableEnvironment.create(environment_settings=s_set)
-    s_env = StreamExecutionEnvironment.get_execution_environment() 
+    s_set = EnvironmentSettings.in_streaming_mode()
+    st_env = TableEnvironment.create(environment_settings=s_set)
     
     # These codes won't work.
     '''
@@ -75,6 +68,7 @@ if __name__ == '__main__':
             'properties.bootstrap.servers' = '{sys.argv[1]}',
             'topic' = '{sys.argv[2]}',
             'format' = 'json',
+            'scan.startup.mode' = 'latest-offset',
             'json.fail-on-missing-field' = 'false',
             'json.ignore-parse-errors' = 'true',
             'json.timestamp-format.standard' = 'SQL'
