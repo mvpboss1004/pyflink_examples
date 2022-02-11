@@ -3,7 +3,7 @@ from pyflink.table import EnvironmentSettings, TableEnvironment, expressions as 
 
 if __name__ == '__main__':
     s_set = EnvironmentSettings.in_streaming_mode()
-    st_env = StreamTableEnvironment.create(environment_settings=s_set)
+    st_env = TableEnvironment.create(environment_settings=s_set)
 
     st_env.execute_sql(f'''
         CREATE TEMPORARY TABLE kafka_in (
