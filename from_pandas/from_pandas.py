@@ -7,7 +7,7 @@ import pandas as pd
 import pyarrow as pa
 from pyarrow import types as T
 from pyflink.java_gateway import get_gateway
-from pyflink.table import BatchTableEnvironment, EnvironmentSettings, Table
+from pyflink.table import EnvironmentSettings, TableEnvironment, Table
 from pyflink.table.serializers import ArrowSerializer
 from pyflink.table.types import RowField, RowType, create_arrow_schema, from_arrow_type, _to_java_type
 from pyflink.table.utils import tz_convert_to_internal
@@ -58,7 +58,7 @@ def pandas_to_arrow(schema, timezone, field_types, series):
         else:
             arrays.append(create_array(
                 tz_convert_to_internal(s, field_type, timezone), schema_type))
-    return pa.RecordBatch.from_arrays(arrays, schema)
+    return pa.RecordBatch.from_arrays(arrays, schema=schema)
 
 class UnsafeSerializer(ArrowSerializer):
     def serialize(self, iterable, stream):
@@ -74,8 +74,6 @@ class UnsafeSerializer(ArrowSerializer):
                 writer.close()
 
 def from_pandas(t_env, pdf, splits_num=1):
-    if not t_env._is_blink_planner and isinstance(t_env, BatchTableEnvironment):
-        raise TypeError("It doesn't support to convert from Pandas DataFrame in the batch mode of old planner")
     if not isinstance(pdf, pd.DataFrame):
         raise TypeError(f'Unsupported type, expected pandas.DataFrame, got {type(pdf)}')
     arrow_schema = safe_type(pa.Schema.from_pandas(pdf, preserve_index=False))
@@ -97,10 +95,9 @@ def from_pandas(t_env, pdf, splits_num=1):
         jvm = get_gateway().jvm
 
         data_type = jvm.org.apache.flink.table.types.utils.TypeConversions\
-            .fromLegacyInfoToDataType(_to_java_type(result_type)).notNull()
-        if t_env._is_blink_planner:
-            data_type = data_type.bridgedTo(
-                load_java_class('org.apache.flink.table.data.RowData'))
+            .fromLegacyInfoToDataType(_to_java_type(result_type))\
+            .notNull()\
+            .bridgedTo(load_java_class('org.apache.flink.table.data.RowData'))
 
         j_arrow_table_source = \
             jvm.org.apache.flink.table.runtime.arrow.ArrowUtils.createArrowTableSource(
@@ -110,12 +107,8 @@ def from_pandas(t_env, pdf, splits_num=1):
         os.unlink(temp_file.name)
 
 if __name__ == '__main__':
-    b_set = EnvironmentSettings\
-        .new_instance()\
-        .in_batch_mode()\
-        .use_blink_planner()\
-        .build()
-    bt_env = BatchTableEnvironment.create(environment_settings=b_set)
+    b_set = EnvironmentSettings.in_batch_mode()
+    bt_env = TableEnvironment.create(environment_settings=b_set)
     df = pd.DataFrame({
         '_int': [1, 2],
         '_timestamp': [datetime.now(), pd.Timestamp.now().tz_localize('UTC')],
