@@ -1,9 +1,8 @@
 import sys
 from datetime import date, datetime
-from pyflink.table import EnvironmentSettings, BatchTableEnvironment, SqlDialect
+from pyflink.table import EnvironmentSettings, TableEnvironment, SqlDialect
 from pyflink.table import expressions as E, types as FT
 from pyflink.table.catalog import HiveCatalog
-from pyflink.dataset import ExecutionEnvironment
 
 def to_hive_type(data_type):
     if isinstance(data_type, (FT.CharType, FT.VarCharType)):
@@ -38,13 +37,8 @@ def to_hive_schema(schema, partition_fields=[]):
     return ',\n'.join(fields), '\n'.join(partitions)
 
 if __name__ == '__main__':
-    b_set = EnvironmentSettings\
-        .new_instance()\
-        .in_batch_mode()\
-        .use_blink_planner()\
-        .build()
-    bt_env = BatchTableEnvironment.create(environment_settings=b_set)
-    b_env = ExecutionEnvironment.get_execution_environment()
+    b_set = EnvironmentSettings.in_batch_mode()
+    bt_env = TableEnvironment.create(environment_settings=b_set)
     bt_conf = bt_env.get_config()
     
     bt_env.register_catalog('hive', HiveCatalog('hive', default_database=sys.argv[1], hive_conf_dir=sys.argv[2]))
