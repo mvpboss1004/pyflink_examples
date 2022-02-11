@@ -1,20 +1,13 @@
-from pyflink.table import EnvironmentSettings, BatchTableEnvironment
-from pyflink.table import expressions as E
-from pyflink.dataset import ExecutionEnvironment
+from pyflink.table import EnvironmentSettings, TableEnvironment
 
 if __name__ == '__main__':
-    b_set = EnvironmentSettings\
-        .new_instance()\
-        .in_batch_mode()\
-        .use_blink_planner()\
-        .build()
-    bt_env = BatchTableEnvironment.create(environment_settings=b_set)
-    b_env = ExecutionEnvironment.get_execution_environment()
+    b_set = EnvironmentSettings.in_batch_mode()
+    bt_env = TableEnvironment.create(environment_settings=b_set)
     t0 = bt_env.from_elements([('Alice',1),('Bob',2)], ['name','age'])
 
-    condition = "age IN (2,3)"
+    condition = 'age IN (2,3)'
     # These codes won't work.
-    # t0.filter(condition).execute().print()
+    # t0.where(condition).execute().print()
 
     # These codes work.
     bt_env.register_table('t0', t0)
