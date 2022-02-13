@@ -1,7 +1,7 @@
 import sys
 from datetime import date, datetime
 from pyflink.table import EnvironmentSettings, TableEnvironment, SqlDialect
-from pyflink.table import expressions as E, types as FT
+from pyflink.table import types as FT
 from pyflink.table.catalog import HiveCatalog
 
 def to_hive_type(data_type):
