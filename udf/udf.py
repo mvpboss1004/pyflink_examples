@@ -1,7 +1,6 @@
-from pyflink.table import EnvironmentSettings, BatchTableEnvironment
+from pyflink.table import EnvironmentSettings, TableEnvironment
 from pyflink.table import expressions as E, DataTypes as T
 from pyflink.table.udf import udf, udaf
-from pyflink.dataset import ExecutionEnvironment
 from functools import reduce
 from operator import or_
 
@@ -17,17 +16,12 @@ def bit_or_aggr(flags):
     return reduce(or_, flags, 0)
 
 if __name__ == '__main__':
-    b_set = EnvironmentSettings\
-        .new_instance()\
-        .in_batch_mode()\
-        .use_blink_planner()\
-        .build()
-    bt_env = BatchTableEnvironment.create(environment_settings=b_set)
-    b_env = ExecutionEnvironment.get_execution_environment()
+    b_set = EnvironmentSettings.in_batch_mode()
+    bt_env = TableEnvironment.create(environment_settings=b_set)
     bt_env.create_temporary_system_function('INET_ATON', inet_aton)
     bt_env.create_temporary_system_function('BIT_OR_AGGR', bit_or_aggr)
     bt_env\
-        .from_elements([('0.0.0.1',1),('0.0.0.1',2)], ['ip','flag'])\
+        .from_elements([('0.0.0.1',1),('0.0.0.1',2)], schema=['ip','flag'])\
         .group_by('ip')\
         .select(inet_aton(E.col('ip')), bit_or_aggr(E.col('flag')))\
         .execute()\
