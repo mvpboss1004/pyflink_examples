@@ -6,6 +6,7 @@ if __name__ == '__main__':
     bt_env = TableEnvironment.create(environment_settings=b_set)
     
     bt_env.load_module('hive', HiveModule())
+    bt_env.use_modules('hive', 'core')
     print('Available functions: ', bt_env.list_functions())
     t0 = bt_env.from_elements([('Alice',1),('Bob',2)], ['name','age'])
     bt_env.register_table('t0', t0)
