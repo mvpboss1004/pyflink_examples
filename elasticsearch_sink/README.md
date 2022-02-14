@@ -15,8 +15,9 @@ PUT _template/test_template
       "location":{
         "type":"geo_point"
       },
-      "timestamp":{
-        "type":"date"
+      "birthday":{
+        "type":"date",
+        "format": "yyyy-MM-dd HH:mm:ss"
       }
     }
   }

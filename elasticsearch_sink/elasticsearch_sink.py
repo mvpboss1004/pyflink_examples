@@ -7,9 +7,9 @@ if __name__ == '__main__':
     sql = f'''
         CREATE TABLE test (
             name STRING,
-            age INT
+            age INT,
             tags ARRAY<STRING>,
-            timestamp TIMESTAMP<6>,
+            birthday TIMESTAMP(3),
             location ROW<
                 lat DOUBLE,
                 lon DOUBLE
@@ -17,23 +17,24 @@ if __name__ == '__main__':
         ) WITH (
             'connector' = 'elasticsearch-7',
             'hosts' = '{sys.argv[1]}',
-            'index' = '{{timestamp|yyyy.MM.dd}}',
+            'index' = 'test-{{birthday|yyyy.MM.dd}}',
             'username' = '{sys.argv[2]}',
             'password' = '{sys.argv[3]}',
             'failure-handler' = 'retry-rejected',
-            'sink.bulk-flush.backoff.max-retries' = 3
-        );
+            'sink.bulk-flush.backoff.max-retries' = '3'
+        )
     '''
     bt_env.execute_sql(sql)
     schema = DT.ROW([
         DT.FIELD('name', DT.STRING()),
         DT.FIELD('age', DT.INT()),
         DT.FIELD('tags', DT.ARRAY(DT.STRING())),
-        DT.FIELD('timestamp', DT.TIMESTAMP()),
-        DT.ROW([
+        DT.FIELD('birthday', DT.TIMESTAMP(3)),
+        DT.FIELD('location', DT.ROW([
             DT.FIELD('lat', DT.DOUBLE()),
             DT.FIELD('lon', DT.DOUBLE())
-        ])
+        ]))
     ])
-    element = ('Alice', 1, ('girl','baby'), datetime.now(), {'lat':22.0, 'lon':113.0})
-    bt_env.from_elements([element], schema=schema).insert_into('test').execute()
+    element = ('Alice', 1, ('girl','baby'), datetime(2000,1,1), {'lat':22.0, 'lon':113.0})
+    bt_env.from_elements([element], schema=schema).insert_into('test')
+    bt_env.execute('elasticsearch_sink')
