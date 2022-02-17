@@ -1,5 +1,6 @@
-from pyflink.table import EnvironmentSettings, TableEnvironment
-from pyflink.table import expressions as E, DataTypes as T
+import json
+from pyflink.table import EnvironmentSettings, Row, TableEnvironment
+from pyflink.table import DataTypes as T, expressions as E
 from pyflink.table.udf import udf, udaf
 from functools import reduce
 from operator import or_
@@ -15,9 +16,23 @@ def inet_aton(ip):
 def bit_or_aggr(flags):
     return reduce(or_, flags, 0)
 
+schema = T.ROW([
+    T.FIELD('name', T.STRING()),
+    T.FIELD('location', T.ROW([
+        T.FIELD('lat', T.DOUBLE()),
+        T.FIELD('lon', T.DOUBLE())
+    ]))
+])
+@udf(result_type=schema)
+def json_load(row):
+    js = json.loads(row.message)
+    return Row(js['name'], Row(js['location']['lat'], js['location']['lon']))
+
 if __name__ == '__main__':
     b_set = EnvironmentSettings.in_batch_mode()
     bt_env = TableEnvironment.create(environment_settings=b_set)
+    
+    # UDF in SQL
     bt_env.create_temporary_system_function('INET_ATON', inet_aton)
     bt_env.create_temporary_system_function('BIT_OR_AGGR', bit_or_aggr)
     bt_env\
@@ -26,4 +41,12 @@ if __name__ == '__main__':
         .select(inet_aton(E.col('ip')), bit_or_aggr(E.col('flag')))\
         .execute()\
         .print()
-
+    
+    # UDF in map
+    bt_env\
+        .from_elements(
+            [('{"name":"hello", "location":{"lat":22.0, "lon":113.98"} }',)],
+            schema=T.ROW([T.FIELD('message', T.STRING())]))\
+        .map(json_load)\
+        .execute()\
+        .print()
