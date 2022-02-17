@@ -82,7 +82,7 @@ IMPORTS='
 from pyflink.common import *
 from pyflink.datastream import *
 from pyflink.table import expressions as E, descriptors as D, DataTypes as T, window as W,\
- EnvironmentSettings, TableEnvironment, StreamTableEnvironment
+ EnvironmentSettings, StreamTableEnvironment
 from pyflink.table.udf import udf, udaf, udtf, udtaf
 '
 
@@ -95,10 +95,6 @@ print('\nThe following modules are imported:', imports)
 
 e_env = StreamExecutionEnvironment.get_execution_environment()
 print("ExecutionEnvironment - Use 'e_env' variable")
-
-b_set = EnvironmentSettings.new_instance().in_batch_mode().build()
-bt_env = StreamTableEnvironment.create(e_env, environment_settings=b_set)
-print("Batch - Use 'b_set' and 'bt_env' variables")
 
 s_set = EnvironmentSettings.new_instance().in_streaming_mode().build()
 st_env = StreamTableEnvironment.create(e_env, environment_settings=s_set)
