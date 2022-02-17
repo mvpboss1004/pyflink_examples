@@ -1,7 +1,5 @@
 import json
-from pyflink.common.typeinfo import Types as T
-from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.table import EnvironmentSettings, Row, StreamTableEnvironment, TableEnvironment
+from pyflink.table import EnvironmentSettings, Row, TableEnvironment
 from pyflink.table import DataTypes as D, expressions as E
 from pyflink.table.udf import udf, udaf
 from functools import reduce
@@ -25,39 +23,34 @@ schema = D.ROW([
         D.FIELD('lon', D.DOUBLE())
     ]))
 ])
-type_info = T.ROW_NAMED(
-    ['name', 'location'],
-    [T.STRING(), T.ROW_NAMED(
-        ['lat', 'lon'],
-        [T.DOUBLE(), T.DOUBLE()]
-    )]
-)
-
+@udf(result_type=schema)
 def json_load(row):
-    js = json.loads(row.message)
+    js = json.loads(row[0])
     return Row(js['name'], Row(js['location']['lat'], js['location']['lon']))
 
 if __name__ == '__main__':
-    s_env = StreamExecutionEnvironment.get_execution_environment()
-    st_env = StreamTableEnvironment.create(s_env)
-    b_set = EnvironmentSettings.in_batch_mode()
+    b_set = EnvironmentSettings.in_batch_mode() 
     bt_env = TableEnvironment.create(environment_settings=b_set)
     
     # UDF in SQL
-    st_env.create_temporary_system_function('INET_ATON', inet_aton)
-    st_env.create_temporary_system_function('BIT_OR_AGGR', bit_or_aggr)
-    st_env\
+    bt_env.create_temporary_system_function('INET_ATON', inet_aton)
+    bt_env.create_temporary_system_function('BIT_OR_AGGR', bit_or_aggr)
+    bt_env\
         .from_elements([('0.0.0.1',1),('0.0.0.1',2)], schema=['ip','flag'])\
         .group_by('ip')\
         .select(inet_aton(E.col('ip')), bit_or_aggr(E.col('flag')))\
+        .alias('ip', 'flag')\
         .execute()\
         .print()
-    
-    # UDF in map
-    st_env.from_data_stream(
-        s_env\
-            .from_collection(
-                [('{"name":"hello", "location":{"lat":22.0, "lon":113.98"} }',)],
-                type_info=T.ROW_NAMED(['message'], [T.STRING()]))\
-            .map(json_load, output_type=type_info)\
-    ).execute().print()
+
+    # UDF in Table
+    bt_env\
+        .from_elements(
+            [('{"name":"hello", "location":{"lat":22.0, "lon":113.98} }',)],
+            schema = D.ROW([D.FIELD('message', D.STRING())]))\
+        .map(json_load)\
+        .alias(*schema.field_names())\
+        .select(E.col('name'), E.col('location').lat, E.col('location').lon)\
+        .execute()\
+        .print()
+   
