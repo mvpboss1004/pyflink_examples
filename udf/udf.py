@@ -17,22 +17,25 @@ def inet_aton(ip):
 def bit_or_aggr(flags):
     return reduce(or_, flags, 0)
 
-schema = D.ROW([
+def sorted_fields(fields):
+    return sorted(fields, key=lambda f:f.name)
+schema = D.ROW(sorted_fields([
     D.FIELD('name', D.STRING()),
     D.FIELD('birthday', D.TIMESTAMP(3)),
-    D.FIELD('location', D.ROW([
+    D.FIELD('location', D.ROW(sorted_fields([
         D.FIELD('lat', D.DOUBLE()),
         D.FIELD('lon', D.DOUBLE())
-    ]))
-])
+    ]))),
+]))
 @udf(result_type=schema)
 def json_load(row):
     js = json.loads(row[0])
-    return Row(
-        js['name'],
-        parse(js['birthday']),
-        Row(js['location']['lat'], js['location']['lon'])
+    ret = Row(
+        name = js['name'],
+        birthday = parse(js['birthday']),
+        location = Row(lat=js['location']['lat'], lon=js['location']['lon'])
     )
+    return ret
 
 if __name__ == '__main__':
     b_set = EnvironmentSettings.in_batch_mode() 
