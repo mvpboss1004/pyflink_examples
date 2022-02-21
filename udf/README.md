@@ -58,3 +58,18 @@ But for simplicity, you can define `func_type='pandas'` and install pandas in yo
  - Zip the environment: `zip -r ../flink_venv.zip ./`
  - Start the application `flink run -t local -py udf.py -pyarch /path/to/flink_venv.zip -pyexec flink_venv.zip/bin/python`
 
+## 2. UDF
+When your udf is not a table-mapping function, you need to specific a `DataTypes.ROW()` object as output_type, and return a `Row()` object in your function. But be careful!!! When fields in `DataTypes.ROW()` can be in arbitary order, values in `Row()` are always sorted by field names. Example:  
+
+>In [1]: from pyflink.table import Row
+>In [2]: r0 = Row(name='Alice', age=1)
+>In [3]: r0._values
+>Out[3]: [1, 'Alice']
+>In [5]: Person = Row('name', 'age')
+>In [7]: Person._values
+>Out[7]: ['name', 'age']
+>In [8]: r1 = Person('Bob', 2)
+>In [9]: r1._values
+>Out[9]: ['Bob', 2]
+
+So the best way is always sort your field before create the `DataTypes.ROW()` schema. See `json_load()` function in udf.py:
